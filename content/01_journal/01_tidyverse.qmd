@@ -47,6 +47,14 @@ sales_by_state_tbl %>%
        y = "Sales") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
 
+ggsave("../../assets/img/tidyverse_1.png", width = 15, height = 10, units = "in", dpi = 300) 
+```
+
+![](../../assets/img/tidyverse_1.png){width=80% fig-align="center"}
+```{r}
+library(tidyverse)
+library(readxl)
+library(lubridate)
 #---- Part-2 ----
 
 # Calculate sales by state and year
@@ -73,5 +81,8 @@ sales_by_state_year_tbl %>%
        y = "Sales") +
   facet_wrap(~ state, ncol = 3) +   # Create 12 facets (4 rows x 3 columns)
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
-```
 
+# Save the plot
+ggsave("../../assets/img/tidyverse_2.png", width = 15, height = 10, units = "in", dpi = 300) 
+```
+![](../../assets/img/tidyverse_2.png){width=80% fig-align="center"}

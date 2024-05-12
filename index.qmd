@@ -3,6 +3,9 @@ title: "My Lab Journal"
 subtitle: "Business Data Science Basics"
 author: "Berk Ali Cam"
 ---
+::: callout-note
+I deleted the unused Class notes & Links tabs. *
+:::
 
 ![](assets/logo/logo.png){width=80% fig-align="center"}
 

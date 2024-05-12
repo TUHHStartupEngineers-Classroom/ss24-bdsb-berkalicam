@@ -1,8 +1,117 @@
 ---
 title: "Data Wrangling"
-author: "Joschka Schwarz"
+author: "Berk Ali Cam"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+```{r}
+library(tidyverse)
+library(vroom)
+library(data.table)
+
+#  Specify the datatype of each column
+col_types <- list(
+  id = col_character(),
+  type = col_character(),
+  number = col_character(),
+  country = col_character(),
+  date = col_date("%Y-%m-%d"),
+  abstract = col_character(),
+  title = col_character(),
+  kind = col_character(),
+  num_claims = col_double(),
+  filename = col_character(),
+  withdrawn = col_double()
+)
+
+# Load the datasets
+patent_tb1 <- vroom(
+  file       = '../../assets/datasets/patent.tsv', 
+  delim      = "\t", 
+  col_types  = col_types,
+  na         = c("", "NA", "NULL")
+)
+
+assignee_tb1 <- vroom(
+  file       = '../../assets/datasets/assignee.tsv',
+  delim      = "\t",
+  col_types  = col_types,
+  na         = c("", "NA", "NULL")
+)
+
+patent_assignee_tb1 <- vroom(
+  file       = '../../assets/datasets/patent_assignee.tsv',
+  delim      = "\t",
+  col_types  = col_types,
+  na         = c("", "NA", "NULL"))
+
+uspc_tb1 <- vroom(
+  file       = '../../assets/datasets/uspc.tsv',
+  delim      = "\t",
+  col_types  = col_types,
+  na         = c("", "NA", "NULL")) %>%
+  transform(patent_id = as.character(patent_id))
+
+# Combine the datasets
+wrangled <- assignee_tb1 %>%
+  left_join(patent_assignee_tb1, by = c("id" = "assignee_id")) %>%
+  left_join(patent_tb1, by = c("patent_id" = "id")) %>%
+  left_join(uspc_tb1, by = "patent_id")
+
+
+# ----- Part - 1 ----
+
+patent_leaders <- sort(table(wrangled$organization), decreasing=T)[1:10] %>%
+  as.data.frame() %>%
+  mutate(Var1 = Var1 %>% str_to_title())
+
+top_company <- patent_leaders[1, "Var1"]
+num_patents <- patent_leaders[1, "Freq"]
+
+print(paste0(top_company, " had the most patents in 2014 with ", num_patents, " patents."))
+
+data.table(
+  "Organization (US)" = patent_leaders$Var1,
+  "Number of patents (2014)" = patent_leaders$Freq)
+
+# ----- Part - 2 ----
+
+wrangled_august <- wrangled %>%
+  select(organization, date) %>%
+  filter(date >= "2014-08-01" & date <= "2014-08-31")
+
+patent_leaders_august <- sort(table(wrangled_august$organization), decreasing=T)[1:10] %>%
+  as.data.frame() %>%
+  mutate(Var1 = Var1 %>% str_to_title())
+
+top_company_aug <- patent_leaders_august[1, "Var1"]
+num_patents_aug <- patent_leaders_august[1, "Freq"]
+
+print(paste0(top_company_aug, " had the most patents in August 2014 with ", num_patents_aug, " patents."))
+
+data.table(
+  "Organization (US)" = patent_leaders_august$Var1,
+  "Number of patents (August 2014)" = patent_leaders_august$Freq)
+
+# ----- Part - 3 ----
+
+wrangled_class <- wrangled %>%
+  select(organization, mainclass_id) %>%
+  filter(organization %in% patent_leaders$Var1[1:10]) %>%
+  subset(mainclass_id != "No longer published")
+
+class_leaders <- sort(table(wrangled_class$mainclass_id), decreasing=T)[1:5] %>%
+  as.data.frame() 
+
+top_sector <- class_leaders[1, "Var1"]
+num_patents_sector <- class_leaders[1, "Freq"]
+
+print(paste0(top_sector, "(ACTIVE SOLID-STATE DEVICES) was the most innovative sector in 2014 with ", num_patents_sector, " patents."))
+
+# According to https://www.uspto.gov/web/patents/classification/uspc257/defs257.htm#:~:text=Class%20Definition%20for%20Class%20257,TRANSISTORS%2C%20SOLID%2DSTATE%20DIODES)
+data.table(
+  "USPTO tech main class codes for top 10 companies (in the US?)" = class_leaders$Var1,
+  "Number of patents (2014)" = class_leaders$Freq)
+```
+
+
+

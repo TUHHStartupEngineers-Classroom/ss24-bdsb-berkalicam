@@ -21,7 +21,7 @@ website:
           - text: "03 Data Wrangling"
             file: content/01_journal/03_data_wrangling.qmd
           - text: "04 Data Visualization"
-            file: content/01_journal/04_data_visualization.qmds
+            file: content/01_journal/04_data_visualization.qmd
 format:
   html:
     theme:

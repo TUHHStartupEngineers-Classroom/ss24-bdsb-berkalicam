@@ -1,8 +1,101 @@
 ---
 title: "Data Acquisition"
-author: "Joschka Schwarz"
+author: "Berk Ali Cam"
 ---
+```{r}
+library(ROpenWeatherMap)
+library(tidyverse)
+library(lubridate) 
+library(glue)
+library(rvest)
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+#---- Part-1 ----
+
+API_KEY <- Sys.getenv("API_KEY")
+
+current_weather <- get_current_weather(API_KEY, city = "Hamburg")
+
+weather_data <- tibble(timestamp = as_datetime(current_weather$dt),           # Timestamp of data
+                       city = current_weather$name,                           # City name
+                       country = current_weather$sys$country,                 # Country code
+                       longitude = current_weather$coord$lon,                 # Longitude
+                       latitude = current_weather$coord$lat,                  # Latitude
+                       weather_main = current_weather$weather$main,           # Main weather condition (e.g., "Clouds")
+                       weather_description = current_weather$weather$description, # Detailed description (e.g., "overcast clouds")
+                       temperature = current_weather$main$temp - 273.15,       # Temperature in Celsius
+                       feels_like = current_weather$main$feels_like - 273.15,  # Feels like temperature in Celsius
+                       temp_min = current_weather$main$temp_min - 273.15,     # Minimum temperature in Celsius
+                       temp_max = current_weather$main$temp_max - 273.15,     # Maximum temperature in Celsius
+                       pressure = current_weather$main$pressure,             # Atmospheric pressure
+                       humidity = current_weather$main$humidity,             # Humidity percentage
+                       wind_speed = current_weather$wind$speed,              # Wind speed
+                       wind_deg = current_weather$wind$deg                   # Wind direction (degrees)
+)
+
+glimpse(weather_data)
+
+#---- Part-2 ----
+
+# Load the main page
+url_home <- "https://www.rosebikes.de/fahrräder"
+html_home <- read_html(url_home)
+
+# Go to catalog
+bike_categories <- html_home %>%
+  html_nodes(css = ".catalog-navigation__link")
+
+# Get all the links for each category
+links <- sapply(bike_categories, function(x) {x %>% html_attr("href")})
+
+links <- links %>%
+  enframe(name = "position", value = "subdirectory") %>%
+  mutate(
+    url = glue("https://www.rosebikes.de{subdirectory}"))  %>%
+  distinct(url)
+
+# For the given url , locate all the products by title and scrape their information
+scrape_data <- function(url) {
+  html_bike_cat <- read_html(url)
+  listings <- html_nodes(html_bike_cat, css = '.catalog-category-bikes__price-title') %>% 
+    html_text(trim=TRUE) %>%              
+    str_replace_all(" ","") %>%
+    str_replace_all("ab", "") %>%
+    str_replace_all("€", "") %>%
+    str_replace_all("\n", "") %>%
+    str_replace_all("\\.", "") %>%
+    str_replace_all(",", "\\.") %>%
+    iconv('utf-8', 'ascii', sub='') %>%
+    as.numeric()
+  
+  names <- html_nodes(html_bike_cat, xpath = '//basic-headline/h4') %>% 
+    html_text() %>%
+    str_replace_all("\n", "") %>%
+    str_to_title()
+  
+  categories <- rep(url %>% str_replace_all("https://www.rosebikes.de/fahrräder/", ""), 
+                    each=length(names)) %>%
+    str_to_title()
+  
+  return(list("prices" = listings, "names" = names, "categories" = categories))
+}
+
+# Initiate the dataframe
+rosebikes_df <- tibble()
+
+for (url in links$url) {
+  data <- scrape_data(url) 
+  rosebikes_df <- bind_rows(rosebikes_df, data) 
+}
+
+head(rosebikes_df, 10)
+
+# Check if any prices are unusually high or low 
+unreasonable_prices <- rosebikes_df %>% 
+  filter(prices < 100 | prices > 5000) # 
+print(unreasonable_prices)
+
+#Save the dataframe
+rosebikes_df %>% 
+  write_rds("../../assets/datasets/rosebikes_df.rds")
+
+```
